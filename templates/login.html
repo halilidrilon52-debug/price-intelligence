@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-md mx-auto mt-16">
+    <div class="bg-gray-900 rounded-2xl p-8 border border-gray-800">
+        <h2 class="text-2xl font-bold text-center mb-6">Welcome Back 👋</h2>
+
+        {% if error %}
+        <div class="bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-4">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <!-- Google Login Button -->
+        <a href="/auth/google"
+            class="w-full flex items-center justify-center gap-3 bg-white text-gray-900 font-bold py-3 rounded-lg mb-4 hover:bg-gray-100 transition">
+            <img src="https://www.google.com/favicon.ico" width="20">
+            Continue with Google
+        </a>
+
+        <div class="flex items-center gap-3 mb-4">
+            <hr class="flex-1 border-gray-700">
+            <span class="text-gray-500 text-sm">or</span>
+            <hr class="flex-1 border-gray-700">
+        </div>
+
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="mb-4">
+                {{ form.email.label(class_='block text-sm text-gray-400 mb-2') }}
+                {{ form.email(class_='w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-green-400') }}
+                {% for error in form.email.errors %}
+                <span class="text-red-400 text-sm">{{ error }}</span>
+                {% endfor %}
+            </div>
+            <div class="mb-6">
+                {{ form.password.label(class_='block text-sm text-gray-400 mb-2') }}
+                {{ form.password(class_='w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-green-400') }}
+                {% for error in form.password.errors %}
+                <span class="text-red-400 text-sm">{{ error }}</span>
+                {% endfor %}
+            </div>
+            {{ form.submit(class_='w-full bg-green-500 hover:bg-green-400 text-white font-bold py-3 rounded-lg transition') }}
+        </form>
+
+        <p class="text-center text-gray-400 mt-4 text-sm">
+            No account?
+            <a href="/register" class="text-green-400 hover:underline">Register here</a>
+        </p>
+    </div>
+</div>
+
+{% endblock %}

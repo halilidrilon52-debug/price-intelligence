@@ -1,0 +1,191 @@
+cd ~/price-intelligencefrom flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file from database import DatabaseManager, get_db_connection 
+from scraper import scrape_product from notifier import send_price_alert, generate_csv_report from config import Config import hashlib import random import os from datetime 
+import datetime, timedelta source venv/bin/activate app = Flask(__name__) app.secret_key = Config.SECRET_KEY nano app.py
+# Initialize database on startup
+DatabaseManager.init_db()
+
+# ─── Helper Functions ─────────────────────────────────────────────────────────
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def get_current_user():
+    if "user_id" not in session:
+        return None
+    return DatabaseManager.get_user_by_id(session["user_id"])
+
+def generate_otp():
+    return str(random.randint(1000, 9999))
+
+# ─── Auth Routes ──────────────────────────────────────────────────────────────
+
+@app.route("/")
+def index():
+    user = get_current_user()
+    if user:
+        return redirect(url_for("dashboard"))
+    return redirect(url_for("login"))
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+        password_hash = hash_password(password)
+
+        user = DatabaseManager.get_user_by_email(email)
+
+        if user and user["password_hash"] == password_hash:
+            otp = generate_otp()
+            session["otp"] = otp
+            session["otp_expiry"] = (datetime.now() + timedelta(minutes=5)).isoformat()
+            session["pending_user_id"] = user["id"]
+
+            from notifier import send_email
+            html = f"<h2>Your verification code is: <b>{otp}</b></h2><p>Expires in 5 minutes.</p>"
+            send_email(email, "Your Login Code", html, Config.SMTP_CONFIG)
+            print(f"DEBUG OTP: {otp}")
+
+            return redirect(url_for("verify_otp"))
+        else:
+            return render_template("login.html", error="Invalid email or password.")
+
+    return render_template("login.html")
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+        password_hash = hash_password(password)
+
+        user = DatabaseManager.create_user(email, password_hash)
+        if user:
+            return redirect(url_for("login"))
+        else:
+            return render_template("register.html", error="Email already exists.")
+
+    return render_template("register.html")
+
+@app.route("/verify", methods=["GET", "POST"])
+def verify_otp():
+    if request.method == "POST":
+        entered_otp = request.form.get("otp")
+        stored_otp = session.get("otp")
+        expiry = session.get("otp_expiry")
+
+        if not stored_otp or not expiry:
+            return redirect(url_for("login"))
+
+        if datetime.now() > datetime.fromisoformat(expiry):
+            return render_template("verify.html", error="Code expired. Please login again.")
+
+        if entered_otp == stored_otp:
+            session["user_id"] = session.pop("pending_user_id")
+            session.pop("otp", None)
+            session.pop("otp_expiry", None)
+            return redirect(url_for("dashboard"))
+        else:
+            return render_template("verify.html", error="Wrong code. Try again.")
+
+    return render_template("verify.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+# ─── Dashboard Routes ─────────────────────────────────────────────────────────
+
+@app.route("/dashboard")
+def dashboard():
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    products = DatabaseManager.get_user_products(user["id"])
+    return render_template("dashboard.html", user=user, products=products)
+
+@app.route("/add_product", methods=["POST"])
+def add_product():
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    url = request.form.get("url")
+    result = scrape_product(url)
+
+    if not result["success"]:
+        return redirect(url_for("dashboard"))
+
+    DatabaseManager.add_product(
+        user_id=user["id"],
+        url=url,
+        title=result["title"],
+        image_url=result["image_url"],
+        original_price=result["price"]
+    )
+
+    return redirect(url_for("dashboard"))
+
+@app.route("/check_prices")
+def check_prices():
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    products = DatabaseManager.get_user_products(user["id"])
+    discounted = []
+
+    for product in products:
+        result = scrape_product(product["url"])
+        if not result["success"] or not result["price"]:
+            continue
+
+        new_price = result["price"]
+        old_price = product["current_price"]
+
+        DatabaseManager.add_price_history(product["id"], new_price)
+        DatabaseManager.update_product_price(product["id"], new_price)
+
+        if old_price and new_price < old_price:
+            discounted.append({
+                "title": product["title"],
+                "url": product["url"],
+                "image_url": product["image_url"],
+                "old_price": old_price,
+                "new_price": new_price
+            })
+            send_price_alert(user["email"], product, old_price, new_price, Config.SMTP_CONFIG)
+
+    if discounted:
+        generate_csv_report(discounted)
+
+    return redirect(url_for("dashboard"))
+
+@app.route("/delete_product/<int:product_id>")
+def delete_product(product_id):
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    DatabaseManager.delete_product(product_id)
+    return redirect(url_for("dashboard"))
+
+@app.route("/download_report")
+def download_report():
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    files = [f for f in os.listdir("instance") if f.startswith("price_report_")]
+    if not files:
+        return redirect(url_for("dashboard"))
+
+    latest = sorted(files)[-1]
+    return send_file(os.path.join("instance", latest), as_attachment=True)
+
+# ─── Run ──────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    app.run(debug=True)

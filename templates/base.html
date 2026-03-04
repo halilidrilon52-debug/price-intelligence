@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-white min-h-screen">
+
+    <nav class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
+        <h1 class="text-xl font-bold text-green-400">💰 Price Intelligence</h1>
+        {% if session.user_id %}
+        <a href="/logout" class="text-sm text-gray-400 hover:text-white">Logout</a>
+        {% endif %}
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+</body>
+</html>
