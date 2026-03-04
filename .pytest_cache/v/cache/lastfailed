@@ -1,0 +1,4 @@
+{
+  "tests/test_routes.py::RouteTest": true,
+  "tests/test_utils.py::UtilsTest": true
+}
