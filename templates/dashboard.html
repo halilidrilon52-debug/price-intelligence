@@ -18,10 +18,13 @@
 
 <!-- Action Buttons -->
 <div class="flex gap-3 mb-6">
-    <a href="/check_prices"
-        class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-lg transition">
-        🔍 Check for Discounts
-    </a>
+    <form method="POST" action="/check_prices" class="inline">
+        {{ form.hidden_tag() }}
+        <button type="submit"
+            class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-lg transition">
+            🔍 Check for Discounts
+        </button>
+    </form>
     <a href="/download_report"
         class="bg-gray-700 hover:bg-gray-600 text-white font-bold px-6 py-3 rounded-lg transition">
         📥 Download CSV Report
@@ -62,15 +65,25 @@
             </div>
             {% endif %}
 
+            <p class="text-xs text-gray-400 mb-1 mt-2">Price history:</p>
+            {% for h in product.get('history', []) %}
+            <p class="text-xs text-gray-500">${{ h.price }} — {{ h.checked_at }}</p>
+            {% else %}
+            <p class="text-xs text-gray-600">No history yet.</p>
+            {% endfor %}
+
             <div class="flex gap-2">
                 <a href="{{ product['url'] }}" target="_blank"
                     class="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm text-center py-2 rounded-lg transition">
                     View
                 </a>
-                <a href="/delete_product/{{ product['id'] }}"
-                    class="bg-red-500/20 hover:bg-red-500/40 text-red-400 text-sm px-3 py-2 rounded-lg transition">
-                    🗑
-                </a>
+                <form method="POST" action="/delete_product/{{ product['id'] }}" class="inline">
+                    {{ form.hidden_tag() }}
+                    <button type="submit"
+                        class="bg-red-500/20 hover:bg-red-500/40 text-red-400 text-sm px-3 py-2 rounded-lg transition">
+                        🗑
+                    </button>
+                </form>
             </div>
         </div>
     </div>

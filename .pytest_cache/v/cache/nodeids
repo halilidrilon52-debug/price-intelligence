@@ -1,7 +1,0 @@
-[
-  "tests/test_routes.py::RouteTest::test_get_dashboard_redirect",
-  "tests/test_routes.py::RouteTest::test_get_login",
-  "tests/test_routes.py::RouteTest::test_get_register",
-  "tests/test_utils.py::UtilsTest::test_generate_otp_length",
-  "tests/test_utils.py::UtilsTest::test_hash_and_check"
-]
