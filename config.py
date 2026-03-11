@@ -1,10 +1,15 @@
 import os
+
 from dotenv import load_dotenv
 
+
+# Load environment variables from a .env file if present.
 load_dotenv()
 
 
 class Config:
+    """Application configuration loaded from environment variables."""
+
     # ─────────────────────────────────────────────
     # Flask
     # ─────────────────────────────────────────────
@@ -32,6 +37,14 @@ class Config:
     # ─────────────────────────────────────────────
 
     OTP_EXPIRY_MINUTES = 5
+
+    # ─────────────────────────────────────────────
+    # Paths
+    # ─────────────────────────────────────────────
+
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+    INSTANCE_DIR = os.path.join(BASE_DIR, "instance")
+    DATABASE_PATH = os.path.join(INSTANCE_DIR, "price_intel.db")
 
     # ─────────────────────────────────────────────
     # App Settings

@@ -1,31 +1,29 @@
+import os
+import random
+from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation
+from functools import wraps
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from authlib.integrations.flask_client import OAuth
 from flask import (
     Flask,
-    render_template,
-    redirect,
-    url_for,
-    session,
-    send_file,
     flash,
+    redirect,
+    render_template,
+    send_file,
+    session,
+    url_for,
 )
-from authlib.integrations.flask_client import OAuth
-from apscheduler.schedulers.background import BackgroundScheduler
 from flask_bcrypt import Bcrypt
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from functools import wraps
-from datetime import datetime, timedelta
-from dotenv import load_dotenv
 
-from database import DatabaseManager
-from scraper import scrape_product
-from notifier import send_price_alert, generate_csv_report, send_email
 from config import Config
-from forms import LoginForm, RegisterForm, OTPForm, ProductForm
-
-import random
-import os
-
-load_dotenv()
+from database import DatabaseManager
+from forms import LoginForm, OTPForm, ProductForm, RegisterForm
+from notifier import generate_csv_report, send_email, send_price_alert
+from scraper import scrape_product
 
 app = Flask(__name__)
 app.secret_key = Config.SECRET_KEY
@@ -68,6 +66,28 @@ def get_current_user():
 
 def generate_otp() -> str:
     return str(random.randint(1000, 9999))
+
+
+def clear_otp_session() -> None:
+    """Remove OTP-related data from the session."""
+    session.pop("otp", None)
+    session.pop("otp_expiry", None)
+    session.pop("pending_user_id", None)
+
+
+def is_price_drop(old_price, new_price) -> bool:
+    """Return True only when new_price is numerically lower than old_price."""
+
+    if old_price is None or new_price is None:
+        return False
+
+    try:
+        old_dec = Decimal(str(old_price)).quantize(Decimal("0.01"))
+        new_dec = Decimal(str(new_price)).quantize(Decimal("0.01"))
+    except (InvalidOperation, TypeError, ValueError):
+        return False
+
+    return new_dec < old_dec
 
 
 def login_required(view_func):
@@ -205,13 +225,12 @@ def verify_otp():
         pending_user_id = session.get("pending_user_id")
 
         if not stored_otp or not expiry or not pending_user_id:
+            clear_otp_session()
             flash("Session expired. Please log in again.", "warning")
             return redirect(url_for("login"))
 
         if datetime.now() > datetime.fromisoformat(expiry):
-            session.pop("otp", None)
-            session.pop("otp_expiry", None)
-            session.pop("pending_user_id", None)
+            clear_otp_session()
             return render_template(
                 "verify.html",
                 form=form,
@@ -220,8 +239,7 @@ def verify_otp():
 
         if entered_otp == stored_otp:
             session["user_id"] = session.pop("pending_user_id")
-            session.pop("otp", None)
-            session.pop("otp_expiry", None)
+            clear_otp_session()
             flash("Login successful.", "success")
             return redirect(url_for("dashboard"))
 
@@ -315,7 +333,7 @@ def check_prices():
         DatabaseManager.add_price_history(product["id"], new_price)
         DatabaseManager.update_product_price(product["id"], new_price)
 
-        if old_price and new_price < old_price:
+        if is_price_drop(old_price, new_price):
             discounted.append(
                 {
                     "title": product["title"],
@@ -416,7 +434,7 @@ def scheduled_price_check():
         DatabaseManager.add_price_history(product["id"], new_price)
         DatabaseManager.update_product_price(product["id"], new_price)
 
-        if old_price and new_price < old_price:
+        if is_price_drop(old_price, new_price):
             discounted.append(
                 {
                     "title": product["title"],

@@ -1,10 +1,12 @@
-import resend
 import csv
+import logging
 import os
 from datetime import datetime
 
-# set API key
-resend.api_key = os.environ.get("RESEND_API_KEY")
+import resend
+
+
+logger = logging.getLogger(__name__)
 
 
 def send_email(to_email, subject, html_body, smtp_config=None):
@@ -13,7 +15,7 @@ def send_email(to_email, subject, html_body, smtp_config=None):
     resend.api_key = os.environ.get("RESEND_API_KEY") or resend.api_key
 
     if not resend.api_key:
-        print("❌ RESEND_API_KEY is not set.")
+        logger.error("RESEND_API_KEY is not set; email not sent.")
         return False
 
     try:
@@ -26,11 +28,11 @@ def send_email(to_email, subject, html_body, smtp_config=None):
 
         resend.Emails.send(params)
 
-        print(f"✅ Email sent to {to_email}")
+        logger.info("Email sent to %s", to_email)
         return True
 
     except Exception as e:
-        print(f"❌ Failed to send email: {str(e)}")
+        logger.exception("Failed to send email: %s", str(e))
         return False
 
 
@@ -41,7 +43,7 @@ def send_price_alert(to_email, product, old_price, new_price, smtp_config=None):
         old_price = float(old_price)
         new_price = float(new_price)
     except (TypeError, ValueError):
-        print("❌ Invalid price values.")
+        logger.error("Invalid price values for price alert: %r -> %r", old_price, new_price)
         return False
 
     if old_price <= 0:
@@ -50,6 +52,14 @@ def send_price_alert(to_email, product, old_price, new_price, smtp_config=None):
     else:
         discount = round(old_price - new_price, 2)
         percent = round((discount / old_price) * 100, 1)
+
+    logger.info(
+        "Attempting price alert email to %s for product '%s' (old_price=%s, new_price=%s)",
+        to_email,
+        product.get("title", "Product"),
+        old_price,
+        new_price,
+    )
 
     image_html = ""
     if product.get("image_url"):
@@ -95,7 +105,14 @@ def send_price_alert(to_email, product, old_price, new_price, smtp_config=None):
 
     subject = f"🔥 Price Drop: {product.get('title','Product')} is now ${new_price}!"
 
-    return send_email(to_email, subject, html_body)
+    sent = send_email(to_email, subject, html_body)
+
+    if sent:
+        logger.info("Price alert email successfully sent to %s", to_email)
+    else:
+        logger.warning("Price alert email NOT sent to %s (send_email returned False)", to_email)
+
+    return sent
 
 
 def generate_csv_report(products, output_dir="instance"):
@@ -145,6 +162,6 @@ def generate_csv_report(products, output_dir="instance"):
                 "Discount %": f"{percent}%",
             })
 
-    print(f"✅ CSV report generated: {filename}")
+    logger.info("CSV report generated at %s", filename)
 
     return filename

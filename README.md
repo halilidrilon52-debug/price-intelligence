@@ -1,4 +1,4 @@
-# Price Intelligence
+## Price Intelligence
 
 A Flask-based web application for tracking product prices, monitoring price changes, and sending alerts.
 
@@ -9,7 +9,7 @@ A Flask-based web application for tracking product prices, monitoring price chan
 - Automatic price checking
 - Email notifications for price changes
 - CSV report generation
-- PostgreSQL database support
+- SQLite database support
 - Docker support
 - Basic test suite
 
@@ -17,7 +17,7 @@ A Flask-based web application for tracking product prices, monitoring price chan
 
 - Python
 - Flask
-- PostgreSQL
+- SQLite
 - BeautifulSoup
 - Docker
 - HTML/CSS

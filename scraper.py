@@ -1,6 +1,8 @@
+import re
+from typing import Optional
+
 import requests
 from bs4 import BeautifulSoup
-import re
 
 HEADERS = {
     "User-Agent": (
@@ -10,8 +12,10 @@ HEADERS = {
     )
 }
 
+REQUEST_TIMEOUT_SECONDS = 10
 
-def extract_price(text):
+
+def extract_price(text: Optional[str]) -> Optional[float]:
     """
     Extract numeric price from strings like:
     $29.99
@@ -24,6 +28,8 @@ def extract_price(text):
         return None
 
     cleaned = re.sub(r"[^\d.,]", "", text.strip())
+    if not cleaned:
+        return None
 
     if "," in cleaned and "." in cleaned:
         # detect decimal separator
@@ -40,15 +46,15 @@ def extract_price(text):
         return None
 
 
-def scrape_product(url):
+def scrape_product(url: str) -> dict:
     """
     Scrape product title, image and price from a product page.
     """
 
     try:
-        session = requests.Session()
-        response = session.get(url, headers=HEADERS, timeout=10)
-        response.raise_for_status()
+        with requests.Session() as session:
+            response = session.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT_SECONDS)
+            response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
 
