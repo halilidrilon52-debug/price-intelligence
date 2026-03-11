@@ -34,13 +34,15 @@ A Flask-based price tracking web application that lets users monitor product pri
 ## Screenshots
 
 ### Login Page
-
-![IMG_7477](https://github.com/user-attachments/assets/7eb82964-22e6-42a6-9f41-fd02cc911d2d)
+<img width="1845" height="954" alt="image" src="https://github.com/user-attachments/assets/70aae050-436c-4c0b-b777-04b075826c6a" />
 
 
 ### Dashboard
+<img width="1831" height="954" alt="Screenshot from 2026-03-11 13-58-25" src="https://github.com/user-attachments/assets/bd77acfd-845a-4df1-865c-205e8d5afb1f" />
 
-<img width="1843" height="967" alt="Screenshot from 2026-03-11 13-22-53" src="https://github.com/user-attachments/assets/0ccf8cd8-88a4-47a7-8224-b70a690ecb21" />
+
+### Email Price Alert
+<img width="828" height="1792" alt="IMG_7494 (1)" src="https://github.com/user-attachments/assets/09861bfe-da83-483e-ba3d-cdbb0c5fa381" />
 
 
 ## How It Works
